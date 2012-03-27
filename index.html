@@ -1,0 +1,135 @@
+<html>
+<head>
+	<title>Prepare ye the way of the fjord</title>
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+
+
+<script type="text/javascript">
+var resetPaperTimeout = null;
+
+$(function() {
+	var ctx = getCanvasContext();
+    if (!ctx) return;
+	ctx.fillStyle = "rgb(150,150,150)";
+	ctx.fillRect (0, 0, 500, 500);
+	ctx.fillStyle = "rgba(0, 0, 200, 0.5)";
+	ctx.fillRect (30, 30, 55, 50);
+
+    resetPaper(function() {
+        $('body').css('background', 'white');
+    });
+
+    var previousMousePosition = null;
+    $('#paper').mousemove(function(event) {
+        var newPos = {x: event.offsetX, y: event.offsetY};
+        eraseAt(newPos, previousMousePosition);
+        previousMousePosition = newPos;
+    })
+    $('#paper').bind('mouseover mouseout', function() {
+        previousMousePosition = null;
+    })
+
+})
+
+var lastEraseTime = null;
+function eraseAt(from, to) {
+    if (!to) return;
+    if (from.x === to.x && from.y === to.y) return;
+    var lx = to.x - from.x;
+    var ly = to.y - from.y;
+    var lineLength = Math.sqrt(lx*lx + ly*ly);
+    if (lineLength > 50 && lastEraseTime && lastEraseTime - Date.now() > 500) return;
+    lastEraseTime = Date.now()
+
+    var lineWidth = 20;
+    var wy = lx / lineLength * lineWidth;
+    var wx = ly / lineLength * lineWidth;
+
+    var ctx = getCanvasContext();
+    var gradient = ctx.createLinearGradient(from.x-wx/2, from.y+wy/2, from.x+wx/2, from.y-wy/2);
+    gradient.addColorStop(0,    "rgba(0,0,0, 0)");
+    gradient.addColorStop(0.43, "rgba(0,0,0, 0.8)");
+    gradient.addColorStop(0.57, "rgba(0,0,0, 0.8)");
+    gradient.addColorStop(1,    "rgba(0,0,0, 0)");
+
+    ctx.save();
+    ctx.lineCap = "butt";
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.beginPath();
+    ctx.lineWidth = lineWidth;
+    ctx.strokeStyle = gradient;
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(to.x, to.y);
+    ctx.stroke();
+    ctx.restore();
+}
+
+var _cachedContext = undefined;
+function getCanvasContext() {
+    if (typeof _cachedContext === 'undefined') {
+        var canvas = $('#paper');
+        canvas = canvas[0];
+        if (canvas.getContext) {
+            _cachedContext = canvas.getContext('2d');
+        } else {
+            _cachedContext = null;
+        }
+    }
+    return _cachedContext;
+}
+
+var _resettingPaper = false;
+function resetPaper(callback) {
+    if (_resettingPaper) return;
+    $('body').css('background', 'white');
+
+    _resettingPaper = true;
+
+    $('#paper').attr('height', $(window).height()).attr('width', $(window).width());
+
+    var ctx = getCanvasContext();
+    if (!ctx) return;
+
+    var img = new Image();   // Create new img element
+    img.onload = function() {
+        var imgWidth = img.width;
+        var imgHeight = img.height;
+        var canvasHeight = $('#paper').height();
+        var canvasWidth = $('#paper').width();
+        for (var y = 0; y < canvasHeight; y += imgHeight) {
+            for (var x = 0; x < canvasWidth; x += imgWidth) {
+                var drawWidth = Math.min(imgWidth, canvasWidth - x);
+                var drawHeight = Math.min(imgHeight, canvasHeight - y);
+                ctx.drawImage(img, 0, 0, drawWidth, drawHeight, x, y, drawWidth, drawHeight);
+            }
+        }
+        _resettingPaper = false;
+        $('body').css('background', 'white');
+        if (typeof callback === 'function') return callback();
+    };
+    img.src = 'images/paper-texture.png'; // Set source path
+}
+
+$(window).resize(resetPaper)
+
+</script>
+
+<style type="text/css">
+	canvas {
+	}
+	body {
+		background: white;
+        margin: 0;
+        padding: 0;
+	}
+</style>
+</head>
+
+
+<body>
+
+<canvas id="paper" width="1" height="1"></canvas>
+
+</body>
+</html>
